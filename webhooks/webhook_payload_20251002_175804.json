@@ -1,18 +1,18 @@
 {
   "action": "closed",
-  "number": 6,
+  "number": 9,
   "pull_request": {
-    "url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/6",
-    "id": 2881782987,
-    "node_id": "PR_kwDOP5zYsc6rxITL",
-    "html_url": "https://github.com/eddie-sonar/sonar-modelling-test/pull/6",
-    "diff_url": "https://github.com/eddie-sonar/sonar-modelling-test/pull/6.diff",
-    "patch_url": "https://github.com/eddie-sonar/sonar-modelling-test/pull/6.patch",
-    "issue_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/issues/6",
-    "number": 6,
+    "url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/9",
+    "id": 2882263974,
+    "node_id": "PR_kwDOP5zYsc6ry9um",
+    "html_url": "https://github.com/eddie-sonar/sonar-modelling-test/pull/9",
+    "diff_url": "https://github.com/eddie-sonar/sonar-modelling-test/pull/9.diff",
+    "patch_url": "https://github.com/eddie-sonar/sonar-modelling-test/pull/9.patch",
+    "issue_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/issues/9",
+    "number": 9,
     "state": "closed",
     "locked": false,
-    "title": "Revert \"adding test columns\"",
+    "title": "rename some columns in dim_sc_organization and dim_sc_project",
     "user": {
       "login": "eddie-sonar",
       "id": 138464819,
@@ -34,12 +34,12 @@
       "user_view_type": "public",
       "site_admin": false
     },
-    "body": "Reverts eddie-sonar/sonar-modelling-test#5",
-    "created_at": "2025-10-02T13:21:56Z",
-    "updated_at": "2025-10-02T13:22:23Z",
-    "closed_at": "2025-10-02T13:22:22Z",
-    "merged_at": "2025-10-02T13:22:22Z",
-    "merge_commit_sha": "6ec365072e0d3c7e0df7a4b5db7d237e1f32ee18",
+    "body": "renaming some columns to be organization_property_1 in dim_sc_organization.sql and project_property_1 in dim_sc_project.sql",
+    "created_at": "2025-10-02T15:57:04Z",
+    "updated_at": "2025-10-02T15:57:26Z",
+    "closed_at": "2025-10-02T15:57:26Z",
+    "merged_at": "2025-10-02T15:57:26Z",
+    "merge_commit_sha": "8242f98b4c19e888693de14b392913664008abd9",
     "assignee": null,
     "assignees": [],
     "requested_reviewers": [],
@@ -47,15 +47,15 @@
     "labels": [],
     "milestone": null,
     "draft": false,
-    "commits_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/6/commits",
-    "review_comments_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/6/comments",
+    "commits_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/9/commits",
+    "review_comments_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/9/comments",
     "review_comment_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/comments{/number}",
-    "comments_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/issues/6/comments",
-    "statuses_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/statuses/d839c8c00e350132414dc3c6de162d8ee22508cf",
+    "comments_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/issues/9/comments",
+    "statuses_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/statuses/b1befd14264ce9fa65bdc87cbc398c22f6d5f5c4",
     "head": {
-      "label": "eddie-sonar:revert-5-testing-merge-1",
-      "ref": "revert-5-testing-merge-1",
-      "sha": "d839c8c00e350132414dc3c6de162d8ee22508cf",
+      "label": "eddie-sonar:rename-some-columns",
+      "ref": "rename-some-columns",
+      "sha": "b1befd14264ce9fa65bdc87cbc398c22f6d5f5c4",
       "user": {
         "login": "eddie-sonar",
         "id": 138464819,
@@ -145,14 +145,14 @@
         "releases_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/releases{/id}",
         "deployments_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/deployments",
         "created_at": "2025-09-30T15:20:42Z",
-        "updated_at": "2025-10-02T13:21:09Z",
-        "pushed_at": "2025-10-02T13:21:53Z",
+        "updated_at": "2025-10-02T13:52:09Z",
+        "pushed_at": "2025-10-02T15:55:06Z",
         "git_url": "git://github.com/eddie-sonar/sonar-modelling-test.git",
         "ssh_url": "git@github.com:eddie-sonar/sonar-modelling-test.git",
         "clone_url": "https://github.com/eddie-sonar/sonar-modelling-test.git",
         "svn_url": "https://github.com/eddie-sonar/sonar-modelling-test",
         "homepage": null,
-        "size": 8959,
+        "size": 8973,
         "stargazers_count": 0,
         "watchers_count": 0,
         "language": "Jupyter Notebook",
@@ -199,7 +199,7 @@
     "base": {
       "label": "eddie-sonar:main",
       "ref": "main",
-      "sha": "42ef5e13e7b74a5bb489875ae8c977326503674a",
+      "sha": "f70f5a0cc5e96e4c53a35b96623d6951d9e1b396",
       "user": {
         "login": "eddie-sonar",
         "id": 138464819,
@@ -289,14 +289,14 @@
         "releases_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/releases{/id}",
         "deployments_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/deployments",
         "created_at": "2025-09-30T15:20:42Z",
-        "updated_at": "2025-10-02T13:21:09Z",
-        "pushed_at": "2025-10-02T13:21:53Z",
+        "updated_at": "2025-10-02T13:52:09Z",
+        "pushed_at": "2025-10-02T15:55:06Z",
         "git_url": "git://github.com/eddie-sonar/sonar-modelling-test.git",
         "ssh_url": "git@github.com:eddie-sonar/sonar-modelling-test.git",
         "clone_url": "https://github.com/eddie-sonar/sonar-modelling-test.git",
         "svn_url": "https://github.com/eddie-sonar/sonar-modelling-test",
         "homepage": null,
-        "size": 8959,
+        "size": 8973,
         "stargazers_count": 0,
         "watchers_count": 0,
         "language": "Jupyter Notebook",
@@ -342,28 +342,28 @@
     },
     "_links": {
       "self": {
-        "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/6"
+        "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/9"
       },
       "html": {
-        "href": "https://github.com/eddie-sonar/sonar-modelling-test/pull/6"
+        "href": "https://github.com/eddie-sonar/sonar-modelling-test/pull/9"
       },
       "issue": {
-        "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/issues/6"
+        "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/issues/9"
       },
       "comments": {
-        "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/issues/6/comments"
+        "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/issues/9/comments"
       },
       "review_comments": {
-        "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/6/comments"
+        "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/9/comments"
       },
       "review_comment": {
         "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/comments{/number}"
       },
       "commits": {
-        "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/6/commits"
+        "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/pulls/9/commits"
       },
       "statuses": {
-        "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/statuses/d839c8c00e350132414dc3c6de162d8ee22508cf"
+        "href": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/statuses/b1befd14264ce9fa65bdc87cbc398c22f6d5f5c4"
       }
     },
     "author_association": "OWNER",
@@ -398,7 +398,7 @@
     "review_comments": 0,
     "maintainer_can_modify": false,
     "commits": 1,
-    "additions": 1,
+    "additions": 2,
     "deletions": 2,
     "changed_files": 2
   },
@@ -470,14 +470,14 @@
     "releases_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/releases{/id}",
     "deployments_url": "https://api.github.com/repos/eddie-sonar/sonar-modelling-test/deployments",
     "created_at": "2025-09-30T15:20:42Z",
-    "updated_at": "2025-10-02T13:21:09Z",
-    "pushed_at": "2025-10-02T13:21:53Z",
+    "updated_at": "2025-10-02T13:52:09Z",
+    "pushed_at": "2025-10-02T15:55:06Z",
     "git_url": "git://github.com/eddie-sonar/sonar-modelling-test.git",
     "ssh_url": "git@github.com:eddie-sonar/sonar-modelling-test.git",
     "clone_url": "https://github.com/eddie-sonar/sonar-modelling-test.git",
     "svn_url": "https://github.com/eddie-sonar/sonar-modelling-test",
     "homepage": null,
-    "size": 8959,
+    "size": 8973,
     "stargazers_count": 0,
     "watchers_count": 0,
     "language": "Jupyter Notebook",
