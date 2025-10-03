@@ -10,13 +10,15 @@ from openai import OpenAI
 @dataclass
 class PullRequestData:
     """Data class to hold relevant PR information"""
-    pr_id: int
+    pr_number: int
     title: str
     description: str
     url: str
     creator: str
     created_at: str
     html_url: str
+    repo_owner: str
+    repo_name: str
 
 class WebhookProcessor:
     def __init__(self, development_mode: bool = False, save_payload: bool = False):
@@ -93,17 +95,20 @@ class WebhookProcessor:
         """
         try:
             pr = payload.get('pull_request', {})
+            repository = payload.get('repository', {})
             if not pr:
                 return None
                 
             return PullRequestData(
-                pr_id=pr.get('number'),
+                pr_number=pr.get('number'),
                 title=pr.get('title', ''),
                 description=pr.get('body') or '',  # Use empty string if body is None
                 url=pr.get('url', ''),
                 creator=pr.get('user', {}).get('login', ''),
                 created_at=pr.get('created_at', ''),
-                html_url=pr.get('html_url', '')
+                html_url=pr.get('html_url', ''),
+                repo_owner=repository.get('owner', {}).get('login', ''),
+                repo_name=repository.get('name', '')
             )
         except Exception as e:
             logging.error(f"Error extracting PR data: {str(e)}")
@@ -143,11 +148,13 @@ class WebhookProcessor:
         pr_data = self.extract_pr_data(payload)
         if pr_data:
             result['pr_data'] = {
-                'pr_id': pr_data.pr_id,
+                'pr_number': pr_data.pr_number,
                 'title': pr_data.title,
                 'creator': pr_data.creator,
                 'created_at': pr_data.created_at,
-                'html_url': pr_data.html_url
+                'html_url': pr_data.html_url,
+                'repo_owner': pr_data.repo_owner,
+                'repo_name': pr_data.repo_name
             }
             
             # Generate summary if OpenAI is available
@@ -155,7 +162,7 @@ class WebhookProcessor:
                 summary = self.generate_pr_summary(pr_data)
                 if summary:
                     result['summary'] = summary
-                    logging.info(f'Generated summary for PR #{pr_data.pr_id}: {summary}')
+                    logging.info(f'Generated summary for PR #{pr_data.pr_number}: {summary}')
             
         # Save payload if enabled
         if self.save_payload:

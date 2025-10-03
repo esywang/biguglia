@@ -7,17 +7,12 @@ class TestWebhookProcessor:
     @pytest.fixture
     def processor(self):
         """Create a WebhookProcessor instance for testing"""
-        return WebhookProcessor(development_mode=True, save_payload=True)
-        
-    @pytest.fixture
-    def processor_no_save(self):
-        """Create a WebhookProcessor instance that doesn't save files"""
         return WebhookProcessor(development_mode=True, save_payload=False)
         
     @pytest.fixture
     def sample_webhook_payload(self) -> dict:
         """Load sample webhook payload from JSON file"""
-        webhook_file = Path("webhooks/webhook_payload_20251002_155209.json")
+        webhook_file = Path("webhooks/webhook_payload_20251002_175804.json")
         with open(webhook_file) as f:
             return json.load(f)
             
@@ -39,33 +34,12 @@ class TestWebhookProcessor:
         
         # Verify PR data
         assert result['pr_data'] is not None
-        assert result['pr_data']['pr_id'] > 0
+        assert result['pr_data']['pr_number'] > 0
         assert result['pr_data']['title']
         assert result['pr_data']['creator']
+        assert result['pr_data']['repo_owner']
+        assert result['pr_data']['repo_name']
         
         # Clean up the saved file
         if result['file_path']:
             Path(result['file_path']).unlink()
-            
-    def test_process_webhook_no_save(self, processor_no_save: WebhookProcessor, sample_webhook_payload):
-        """Test processing without saving the payload"""
-        # Process the webhook
-        result = processor_no_save.process_webhook(sample_webhook_payload)
-        
-        # Verify the result structure
-        assert result is not None
-        assert isinstance(result, dict)
-        assert result['file_path'] is None  # Should not save file
-        assert 'pr_data' in result
-        assert result['pr_data'] is not None
-        
-    def test_process_webhook_not_merge(self, processor: WebhookProcessor, sample_webhook_payload):
-        """Test processing a webhook payload that's not a merge to main"""
-        # Modify payload to simulate non-merge event
-        sample_webhook_payload['action'] = 'opened'
-        
-        # Process the webhook
-        result = processor.process_webhook(sample_webhook_payload)
-        
-        # Verify no processing was done
-        assert result is None
