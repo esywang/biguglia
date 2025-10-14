@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -62,6 +62,11 @@ class WebhookProcessor:
             logging.warning("GITHUB_TOKEN not found in environment variables")
         self.github_token = github_token
         self.github_api_base = "https://api.github.com"
+
+    @staticmethod
+    def get_utc_timestamp() -> str:
+        """Get current UTC timestamp in YYYYMMDD_HHMMSS format."""
+        return datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
 
     def generate_pr_summary(self, pr_data: PullRequestData) -> Optional[str]:
         """
@@ -303,7 +308,7 @@ class WebhookProcessor:
 
     def save_webhook_payload(self, payload: Dict) -> str:
         """Save the webhook payload to a JSON file."""
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = self.get_utc_timestamp()
         filename = f'webhook_payload_{timestamp}.json'
         file_path = self.webhooks_dir / filename
         
