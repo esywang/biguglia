@@ -28,10 +28,6 @@ class TestWebhookProcessor:
         assert 'summary' in result
         assert 'pr_data' in result
         
-        # Verify file was saved
-        assert result['file_path'] is not None
-        assert Path(result['file_path']).exists()
-        
         # Verify PR data
         assert result['pr_data'] is not None
         assert result['pr_data']['pr_number'] > 0

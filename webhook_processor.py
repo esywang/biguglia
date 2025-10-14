@@ -6,6 +6,7 @@ from typing import Dict, Optional, Union, TypedDict
 from dataclasses import dataclass
 from datetime import datetime
 from openai import OpenAI
+from supabase import create_client, Client
 
 @dataclass
 class PullRequestData:
@@ -39,6 +40,19 @@ class WebhookProcessor:
         if not openai_api_key:
             logging.warning("OPENAI_API_KEY not found in environment variables")
         self.openai_client = OpenAI(api_key=openai_api_key) if openai_api_key else None
+        
+        # Initialize Supabase client
+        supabase_url = os.environ.get('SUPABASE_URL')
+        supabase_key = os.environ.get('SUPABASE_KEY')
+        if not supabase_url or not supabase_key:
+            logging.warning("SUPABASE_URL or SUPABASE_KEY not found in environment variables")
+            self.supabase_client = None
+        else:
+            try:
+                self.supabase_client: Optional[Client] = create_client(supabase_url, supabase_key)
+            except Exception as e:
+                logging.error(f"Failed to initialize Supabase client: {str(e)}")
+                self.supabase_client = None
 
     def generate_pr_summary(self, pr_data: PullRequestData) -> Optional[str]:
         """
@@ -81,6 +95,90 @@ class WebhookProcessor:
             
         except Exception as e:
             logging.error(f"Error generating PR summary: {str(e)}")
+            return None
+
+    def save_to_supabase(self, table_name: str, data: Dict) -> bool:
+        """
+        Save data to a specified Supabase table.
+        
+        Args:
+            table_name (str): Name of the Supabase table to insert into
+            data (Dict): Data dictionary to insert into the table
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.supabase_client:
+            logging.warning("Supabase client not initialized - cannot save to database")
+            return False
+            
+        if not data:
+            logging.warning("No data provided to save to database")
+            return False
+            
+        try:
+            # Insert into Supabase
+            response = self.supabase_client.table(table_name).insert(data).execute()
+            
+            if response.data:
+                logging.info(f"Successfully saved data to {table_name} table in Supabase")
+                return True
+            else:
+                logging.error(f"Failed to save to {table_name} table - no data returned")
+                return False
+                
+        except Exception as e:
+            logging.error(f"Error saving to {table_name} table in Supabase: {str(e)}")
+            return False
+
+    def _build_pr_data_dict(self, pr_data: PullRequestData) -> Dict:
+        """
+        Build a dictionary from PullRequestData object with all PR fields.
+        
+        Args:
+            pr_data (PullRequestData): The PR data object
+            
+        Returns:
+            Dict: Dictionary containing all PR data fields
+        """
+        return {
+            'pr_number': pr_data.pr_number,
+            'title': pr_data.title,
+            'creator': pr_data.creator,
+            'created_at': pr_data.created_at,
+            'html_url': pr_data.html_url,
+            'repo_owner': pr_data.repo_owner,
+            'repo_name': pr_data.repo_name
+        }
+
+    def prepare_pr_merge_data(self, result_data: Dict) -> Optional[Dict]:
+        """
+        Prepare webhook processing result data for the github_pr_merge table.
+        
+        Args:
+            result_data (Dict): The result data from process_webhook
+            
+        Returns:
+            Optional[Dict]: Formatted data for github_pr_merge table, None if invalid
+        """
+        if not result_data.get('pr_data'):
+            logging.warning("No PR data available to prepare for database")
+            return None
+            
+        try:
+            # Start with the existing PR data dictionary
+            insert_data = result_data['pr_data'].copy()
+            
+            # Add additional fields specific to github_pr_merge table
+            insert_data.update({
+                'summary': result_data.get('summary'),
+                'file_path': result_data.get('file_path')
+            })
+            
+            return insert_data
+            
+        except Exception as e:
+            logging.error(f"Error preparing PR merge data: {str(e)}")
             return None
 
     def extract_pr_data(self, payload: Dict) -> Optional[PullRequestData]:
@@ -141,21 +239,14 @@ class WebhookProcessor:
         result = {
             'file_path': None,
             'summary': None,
-            'pr_data': None
+            'pr_data': None,
+            'saved_to_database': False
         }
             
         # Extract PR data
         pr_data = self.extract_pr_data(payload)
         if pr_data:
-            result['pr_data'] = {
-                'pr_number': pr_data.pr_number,
-                'title': pr_data.title,
-                'creator': pr_data.creator,
-                'created_at': pr_data.created_at,
-                'html_url': pr_data.html_url,
-                'repo_owner': pr_data.repo_owner,
-                'repo_name': pr_data.repo_name
-            }
+            result['pr_data'] = self._build_pr_data_dict(pr_data)
             
             # Generate summary if OpenAI is available
             if self.openai_client:
@@ -170,6 +261,18 @@ class WebhookProcessor:
             if file_path:
                 result['file_path'] = file_path
                 logging.info(f'Saved webhook payload to {file_path}')
+        
+        # Save to Supabase database
+        if self.supabase_client:
+            # Prepare data for github_pr_merge table
+            pr_merge_data = self.prepare_pr_merge_data(result)
+            if pr_merge_data:
+                saved_to_db = self.save_to_supabase('github_pr_merge', pr_merge_data)
+                result['saved_to_database'] = saved_to_db
+            else:
+                result['saved_to_database'] = False
+        else:
+            logging.info('Supabase client not available - skipping database save')
                 
         return result
 
