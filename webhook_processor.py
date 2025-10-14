@@ -1,10 +1,12 @@
 import json
 import logging
 import os
-from pathlib import Path
-from typing import Dict, Optional, Union, TypedDict
-from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional, Union
+
+import requests
+from dataclasses import dataclass
 from openai import OpenAI
 from supabase import create_client, Client
 
@@ -53,6 +55,13 @@ class WebhookProcessor:
             except Exception as e:
                 logging.error(f"Failed to initialize Supabase client: {str(e)}")
                 self.supabase_client = None
+        
+        # Initialize GitHub API client
+        github_token = os.environ.get('GITHUB_TOKEN')
+        if not github_token:
+            logging.warning("GITHUB_TOKEN not found in environment variables")
+        self.github_token = github_token
+        self.github_api_base = "https://api.github.com"
 
     def generate_pr_summary(self, pr_data: PullRequestData) -> Optional[str]:
         """
@@ -97,17 +106,8 @@ class WebhookProcessor:
             logging.error(f"Error generating PR summary: {str(e)}")
             return None
 
-    def save_to_supabase(self, table_name: str, data: Dict) -> bool:
-        """
-        Save data to a specified Supabase table.
-        
-        Args:
-            table_name (str): Name of the Supabase table to insert into
-            data (Dict): Data dictionary to insert into the table
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
+    def save_to_supabase(self, table_name: str, data: Union[Dict, List[Dict]]) -> bool:
+        """Save data to a specified Supabase table (supports single record or batch)."""
         if not self.supabase_client:
             logging.warning("Supabase client not initialized - cannot save to database")
             return False
@@ -117,11 +117,11 @@ class WebhookProcessor:
             return False
             
         try:
-            # Insert into Supabase
             response = self.supabase_client.table(table_name).insert(data).execute()
             
             if response.data:
-                logging.info(f"Successfully saved data to {table_name} table in Supabase")
+                record_count = len(response.data) if isinstance(response.data, list) else 1
+                logging.info(f"Successfully saved {record_count} record(s) to {table_name} table")
                 return True
             else:
                 logging.error(f"Failed to save to {table_name} table - no data returned")
@@ -132,15 +132,7 @@ class WebhookProcessor:
             return False
 
     def _build_pr_data_dict(self, pr_data: PullRequestData) -> Dict:
-        """
-        Build a dictionary from PullRequestData object with all PR fields.
-        
-        Args:
-            pr_data (PullRequestData): The PR data object
-            
-        Returns:
-            Dict: Dictionary containing all PR data fields
-        """
+        """Build a dictionary from PullRequestData object."""
         return {
             'pr_number': pr_data.pr_number,
             'title': pr_data.title,
@@ -150,47 +142,31 @@ class WebhookProcessor:
             'repo_owner': pr_data.repo_owner,
             'repo_name': pr_data.repo_name
         }
+    
+    def _build_dbt_model_changes_dict(self, model_filename: str, pr_data: Dict, summary: Optional[str]) -> Dict:
+        """Build a dictionary for dbt model changes table."""
+        return {
+            'dbt_model_name': model_filename,
+            'pr_html_url': pr_data.get('html_url'),
+            'ai_summary': summary,
+            'pr_created_at': pr_data.get('created_at'),
+            'pr_creator': pr_data.get('creator'),
+        }
 
-    def prepare_pr_merge_data(self, result_data: Dict) -> Optional[Dict]:
-        """
-        Prepare webhook processing result data for the github_pr_merge table.
-        
-        Args:
-            result_data (Dict): The result data from process_webhook
-            
-        Returns:
-            Optional[Dict]: Formatted data for github_pr_merge table, None if invalid
-        """
-        if not result_data.get('pr_data'):
-            logging.warning("No PR data available to prepare for database")
+    def _prepare_pr_merge_data(self, result_data: Dict) -> Optional[Dict]:
+        """Prepare data for github_pr_merge table."""
+        pr_data = result_data.get('pr_data')
+        if not pr_data:
             return None
             
-        try:
-            # Start with the existing PR data dictionary
-            insert_data = result_data['pr_data'].copy()
-            
-            # Add additional fields specific to github_pr_merge table
-            insert_data.update({
-                'summary': result_data.get('summary'),
-                'file_path': result_data.get('file_path')
-            })
-            
-            return insert_data
-            
-        except Exception as e:
-            logging.error(f"Error preparing PR merge data: {str(e)}")
-            return None
+        return {
+            **pr_data,
+            'summary': result_data.get('summary'),
+            'file_path': result_data.get('file_path')
+        }
 
     def extract_pr_data(self, payload: Dict) -> Optional[PullRequestData]:
-        """
-        Extract relevant PR information from the webhook payload.
-        
-        Args:
-            payload (Dict): The webhook payload to process
-            
-        Returns:
-            Optional[PullRequestData]: Extracted PR data if available, None otherwise
-        """
+        """Extract relevant PR information from the webhook payload."""
         try:
             pr = payload.get('pull_request', {})
             repository = payload.get('repository', {})
@@ -200,7 +176,7 @@ class WebhookProcessor:
             return PullRequestData(
                 pr_number=pr.get('number'),
                 title=pr.get('title', ''),
-                description=pr.get('body') or '',  # Use empty string if body is None
+                description=pr.get('body') or '',
                 url=pr.get('url', ''),
                 creator=pr.get('user', {}).get('login', ''),
                 created_at=pr.get('created_at', ''),
@@ -212,18 +188,51 @@ class WebhookProcessor:
             logging.error(f"Error extracting PR data: {str(e)}")
             return None
 
-    def process_webhook(self, payload: Dict) -> Optional[Dict]:
-        """
-        Process a webhook payload, generate summary if it's a merge to main/master,
-        and optionally save the payload.
-        
-        Args:
-            payload (Dict): The webhook payload to process
+    def fetch_pr_files(self, repo_owner: str, repo_name: str, pr_number: int) -> Optional[List[Dict]]:
+        """Fetch the list of files changed in a PR from GitHub API."""
+        if not self.github_token:
+            logging.error("GitHub token not available - cannot fetch PR files")
+            return None
             
-        Returns:
-            Optional[Dict]: Processing results including file path and summary if applicable,
-                          None if conditions not met
-        """
+        try:
+            url = f"{self.github_api_base}/repos/{repo_owner}/{repo_name}/pulls/{pr_number}/files"
+            headers = {
+                'Authorization': f'Bearer {self.github_token}',
+                'Accept': 'application/vnd.github.v3+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+            
+            response = requests.get(url, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            files = response.json()
+            logging.info(f"Successfully fetched {len(files)} files for PR #{pr_number}")
+            return files
+            
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error fetching PR files from GitHub API: {str(e)}")
+            return None
+        except Exception as e:
+            logging.error(f"Unexpected error fetching PR files: {str(e)}")
+            return None
+
+    def filter_sql_model_files(self, files: List[Dict]) -> List[str]:
+        """Filter files to get only models/*.sql filenames."""
+        sql_model_files = [
+            file.get('filename', '') 
+            for file in files 
+            if file.get('filename', '').startswith('models/') and file.get('filename', '').endswith('.sql')
+        ]
+        
+        if sql_model_files:
+            logging.info(f"Found {len(sql_model_files)} SQL model files: {sql_model_files}")
+        else:
+            logging.info("No SQL model files found in this PR")
+            
+        return sql_model_files
+
+    def process_webhook(self, payload: Dict) -> Optional[Dict]:
+        """Process a webhook payload for PR merges to main/master branch."""
         # Check if this is a merge into main/master branch
         base_branch = payload.get('pull_request', {}).get('base', {}).get('ref', '')
         is_merge_to_main = (
@@ -236,56 +245,64 @@ class WebhookProcessor:
             logging.info(f'Not a merge to main/master (got {base_branch}) - skipping processing')
             return None
             
+        # Extract and process PR data
+        pr_data = self.extract_pr_data(payload)
+        if not pr_data:
+            return None
+            
         result = {
             'file_path': None,
             'summary': None,
-            'pr_data': None,
-            'saved_to_database': False
+            'pr_data': self._build_pr_data_dict(pr_data),
+            'sql_model_files': [],
         }
-            
-        # Extract PR data
-        pr_data = self.extract_pr_data(payload)
-        if pr_data:
-            result['pr_data'] = self._build_pr_data_dict(pr_data)
-            
-            # Generate summary if OpenAI is available
-            if self.openai_client:
-                summary = self.generate_pr_summary(pr_data)
-                if summary:
-                    result['summary'] = summary
-                    logging.info(f'Generated summary for PR #{pr_data.pr_number}: {summary}')
-            
+        
+        # Fetch and filter SQL model files
+        pr_files = self.fetch_pr_files(pr_data.repo_owner, pr_data.repo_name, pr_data.pr_number)
+        if pr_files:
+            result['sql_model_files'] = self.filter_sql_model_files(pr_files)
+        
+        # Generate AI summary if available
+        if self.openai_client:
+            summary = self.generate_pr_summary(pr_data)
+            if summary:
+                result['summary'] = summary
+                logging.info(f'Generated summary for PR #{pr_data.pr_number}: {summary}')
+        
         # Save payload if enabled
         if self.save_payload:
-            file_path = self.save_webhook_payload(payload)
-            if file_path:
-                result['file_path'] = file_path
-                logging.info(f'Saved webhook payload to {file_path}')
+            result['file_path'] = self.save_webhook_payload(payload)
         
-        # Save to Supabase database
-        if self.supabase_client:
-            # Prepare data for github_pr_merge table
-            pr_merge_data = self.prepare_pr_merge_data(result)
-            if pr_merge_data:
-                saved_to_db = self.save_to_supabase('github_pr_merge', pr_merge_data)
-                result['saved_to_database'] = saved_to_db
-            else:
-                result['saved_to_database'] = False
-        else:
-            logging.info('Supabase client not available - skipping database save')
-                
+        # Save to database
+        self._save_to_database(result)
+        
         return result
 
-    def save_webhook_payload(self, payload: Dict) -> str:
-        """
-        Save the webhook payload to a JSON file.
-        
-        Args:
-            payload (Dict): The webhook payload to save
+    def _save_to_database(self, result: Dict) -> None:
+        """Save PR and model changes data to Supabase."""
+        if not self.supabase_client:
+            logging.info('Supabase client not available - skipping database save')
+            return
             
-        Returns:
-            str: Path to the saved file
-        """
+        # Save PR merge data
+        pr_merge_data = self._prepare_pr_merge_data(result)
+        if pr_merge_data:
+            self.save_to_supabase('github_pr_merge', pr_merge_data)
+
+        # Save model changes in batch (more efficient than row-by-row)
+        if result['sql_model_files']:
+            model_changes_batch = [
+                self._build_dbt_model_changes_dict(
+                    sql_model_file, 
+                    result['pr_data'], 
+                    result.get('summary')
+                )
+                for sql_model_file in result['sql_model_files']
+            ]
+            self.save_to_supabase('dbt_model_changes', model_changes_batch)
+
+    def save_webhook_payload(self, payload: Dict) -> str:
+        """Save the webhook payload to a JSON file."""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f'webhook_payload_{timestamp}.json'
         file_path = self.webhooks_dir / filename
@@ -295,20 +312,8 @@ class WebhookProcessor:
         
         return str(file_path)
 
-    def process_local_file(self, file_path: Union[str, Path]) -> Optional[str]:
-        """
-        Process a webhook payload from a local JSON file.
-        
-        Args:
-            file_path (Union[str, Path]): Path to the JSON file to process
-            
-        Returns:
-            Optional[str]: Path to saved file if saved, None otherwise
-            
-        Raises:
-            FileNotFoundError: If the file doesn't exist
-            json.JSONDecodeError: If the file contains invalid JSON
-        """
+    def process_local_file(self, file_path: Union[str, Path]) -> Optional[Dict]:
+        """Process a webhook payload from a local JSON file (development mode only)."""
         if not self.development_mode:
             logging.warning("Attempted to process local file while not in development mode")
             return None
