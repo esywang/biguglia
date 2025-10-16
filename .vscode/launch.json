@@ -9,6 +9,12 @@
                 "host": "localhost",
                 "port": 9091
             },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}/backend",
+                    "remoteRoot": "."
+                }
+            ],
             "preLaunchTask": "func: host start"
         },
         {
@@ -20,11 +26,11 @@
                 "-v",
                 "tests/test_webhook_processor.py"
             ],
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/backend",
             "console": "integratedTerminal",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}"
+                "PYTHONPATH": "${workspaceFolder}/backend"
             }
         }
     ]

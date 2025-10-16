@@ -1,0 +1,3 @@
+curl -X POST http://localhost:7071/api/github-webhook \
+  -H "Content-Type: application/json" \
+  -d @backend/webhooks/webhook_payload_20251002_175804.json
