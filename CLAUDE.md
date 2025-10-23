@@ -37,11 +37,42 @@ The backend is an Azure Functions Python application with two main endpoints:
 - `dbt_model_changes`: Tracks SQL model file changes per PR (model name, PR URL, AI summary)
 
 ### Frontend (`frontend/`)
-React application using:
+React application for visualizing dbt model changes and PR history.
+
+**Key Features:**
+- **Weekly PR Log Page** (`/`): Displays all PRs merged to main/master, grouped by week with date filters
+- **Model Changelog Page** (`/model/:modelName`): Shows historical changes for a specific dbt model with timeline view
+
+**Tech Stack:**
+- React 19 + TypeScript
 - Vite for build tooling
-- TypeScript for type safety
-- Tailwind CSS v4 with custom components via shadcn/ui pattern
-- Component library in `src/components/ui/`
+- React Router for navigation
+- TanStack Query (React Query) for data fetching, caching, and state management
+- Supabase JS client for database access (direct from frontend)
+- Tailwind CSS v4 with shadcn/ui component pattern
+- date-fns for date formatting
+- lucide-react for icons
+
+**Key Components:**
+- `src/components/Sidebar.tsx`: Navigation sidebar with collapsible dbt models dropdown
+- `src/components/Layout.tsx`: Root layout with sidebar
+- `src/pages/WeeklyLog.tsx`: Weekly PR log with date range filtering
+- `src/pages/ModelChangelog.tsx`: Timeline view of model changes
+- `src/hooks/usePRs.ts`: TanStack Query hook for fetching PRs with filters
+- `src/hooks/useModels.ts`: TanStack Query hook for fetching unique model names
+- `src/hooks/useModelChanges.ts`: TanStack Query hook for fetching model changelog
+- `src/lib/supabase.ts`: Supabase client initialization
+- `src/lib/queryClient.ts`: TanStack Query client configuration
+- `src/types/database.ts`: TypeScript types for Supabase tables
+
+**Data Caching:**
+- TanStack Query handles all data fetching with 5-minute stale time and 10-minute cache persistence
+- Query keys: `['prs', startDate, endDate]`, `['models']`, `['model-changes', modelName]`
+- Automatic background refetching and request deduplication
+
+**Environment Variables (in `.env.local`):**
+- `VITE_SUPABASE_URL`: Supabase project URL
+- `VITE_SUPABASE_ANON_KEY`: Supabase anonymous/public key
 
 ## Common Commands
 
