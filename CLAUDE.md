@@ -132,6 +132,56 @@ Two debug configurations available (`.vscode/launch.json`):
    - Run `func start` first, then attach
 2. **Python: Debug Tests**: Runs pytest tests with debugger attached
 
+### Testing with GitHub Webhooks (ngrok)
+
+To test the webhook functionality with real GitHub PR events:
+
+#### 1. Start Backend Locally
+```bash
+cd backend
+source .venv/bin/activate
+func start
+```
+Your function should be running on `http://localhost:7071`
+
+#### 2. Start ngrok Tunnel
+In a new terminal:
+```bash
+ngrok http 7071
+```
+Copy the HTTPS URL from the output (e.g., `https://abc123.ngrok-free.app`)
+
+#### 3. Configure GitHub Webhook
+1. Go to your GitHub repository → **Settings** → **Webhooks**
+2. Click **Add webhook** (or edit existing)
+3. Set **Payload URL** to: `https://abc123.ngrok-free.app/api/github-webhook`
+4. Set **Content type** to: `application/json`
+5. Select **Pull requests** events only
+6. Ensure **Active** is checked
+7. Save the webhook
+
+#### 4. Test the Webhook
+**Option A: Create and merge a test PR**
+1. Create a new branch with changes to dbt model files (`models/*.sql`)
+2. Create a PR and merge it to `main` or `master`
+
+**Option B: Redeliver an existing webhook**
+1. Go to **Settings** → **Webhooks** → Click your webhook
+2. Scroll to **Recent Deliveries**
+3. Click a delivery → **Redeliver**
+
+#### 5. Monitor and Verify
+- **Backend logs**: Check your terminal for processing messages
+- **ngrok dashboard**: Visit `http://127.0.0.1:4040` for request details
+- **Supabase**: Verify data in `github_pr_merge` and `dbt_model_changes` tables
+- **Frontend**: Run `npm run dev` and check the Weekly PR Log and Model Changelog pages
+
+#### Troubleshooting
+- Ensure all environment variables are set in `backend/local.settings.json`
+- Verify PR is merging to `main` or `master` branch
+- Update GitHub webhook URL when restarting ngrok (free tier URLs change)
+- Set `save_payload=True` in `WebhookProcessor` to save payloads for debugging
+
 ## Development Notes
 
 ### Backend Development Mode
