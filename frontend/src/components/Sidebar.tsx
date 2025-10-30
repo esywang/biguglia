@@ -1,15 +1,79 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Calendar, ChevronDown, ChevronRight, Database } from 'lucide-react'
+import { Calendar, ChevronDown, ChevronRight, Database, Search, Folder, File } from 'lucide-react'
 import { useModels } from '@/hooks/useModels'
 import { cn } from '@/lib/utils'
+import { buildModelTree, filterModelTree, type TreeNode } from '@/lib/modelTree'
+
+// Recursive tree node component
+function TreeNodeComponent({
+  node,
+  depth = 0
+}: {
+  node: TreeNode
+  depth?: number
+}) {
+  const [isOpen, setIsOpen] = useState(true)
+  const location = useLocation()
+
+  if (node.type === 'file') {
+    return (
+      <Link
+        to={`/model/${encodeURIComponent(node.fullPath)}`}
+        className={cn(
+          "flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors truncate",
+          location.pathname === `/model/${encodeURIComponent(node.fullPath)}`
+            ? "bg-primary/10 text-primary font-medium"
+            : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"
+        )}
+        style={{ paddingLeft: `${depth * 12 + 12}px` }}
+        title={node.fullPath}
+      >
+        <File className="w-4 h-4 flex-shrink-0" />
+        <span className="truncate">{node.name}</span>
+      </Link>
+    )
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center space-x-2 w-full px-3 py-1.5 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-muted-foreground"
+        style={{ paddingLeft: `${depth * 12 + 12}px` }}
+      >
+        {isOpen ? (
+          <ChevronDown className="w-4 h-4 flex-shrink-0" />
+        ) : (
+          <ChevronRight className="w-4 h-4 flex-shrink-0" />
+        )}
+        <Folder className="w-4 h-4 flex-shrink-0" />
+        <span className="truncate">{node.name}</span>
+      </button>
+      {isOpen && node.children && (
+        <div>
+          {node.children.map((child) => (
+            <TreeNodeComponent key={child.fullPath} node={child} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function Sidebar() {
   const [isModelsOpen, setIsModelsOpen] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
   const location = useLocation()
 
   // Use TanStack Query hook
   const { data: models = [], isLoading } = useModels()
+
+  // Build tree structure and filter based on search
+  const modelTree = useMemo(() => {
+    const tree = buildModelTree(models)
+    return filterModelTree(tree, searchQuery)
+  }, [models, searchQuery])
 
   return (
     <aside className="w-64 bg-background border-r min-h-screen flex flex-col">
@@ -56,32 +120,39 @@ export function Sidebar() {
             </button>
 
             {isModelsOpen && (
-              <div className="mt-1 ml-4 space-y-0.5">
-                {isLoading ? (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                    Loading models...
+              <div className="mt-2 space-y-2">
+                {/* Search Input */}
+                <div className="px-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search models..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-3 py-1.5 text-sm bg-accent/50 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted-foreground"
+                    />
                   </div>
-                ) : models.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                    No models found
-                  </div>
-                ) : (
-                  models.map((model) => (
-                    <Link
-                      key={model}
-                      to={`/model/${encodeURIComponent(model)}`}
-                      className={cn(
-                        "block px-3 py-2 text-sm rounded-md transition-colors truncate",
-                        location.pathname === `/model/${encodeURIComponent(model)}`
-                          ? "bg-primary/10 text-primary font-medium"
-                          : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"
-                      )}
-                      title={model}
-                    >
-                      {model}
-                    </Link>
-                  ))
-                )}
+                </div>
+
+                {/* Tree View */}
+                <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
+                  {isLoading ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      Loading models...
+                    </div>
+                  ) : modelTree.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      {searchQuery ? 'No models match your search' : 'No models found'}
+                    </div>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {modelTree.map((node) => (
+                        <TreeNodeComponent key={node.fullPath} node={node} depth={0} />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
