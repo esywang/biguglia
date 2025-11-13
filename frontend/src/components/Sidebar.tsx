@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Calendar, ChevronDown, ChevronRight, Database, Search, Folder, File } from 'lucide-react'
+import { Calendar, ChevronDown, ChevronRight, Database, Search, Folder, File, LogOut, User } from 'lucide-react'
 import { useModels } from '@/hooks/useModels'
+import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 import { buildModelTree, filterModelTree, type TreeNode } from '@/lib/modelTree'
+import { Button } from '@/components/ui/button'
 
 // Recursive tree node component
 function TreeNodeComponent({
@@ -65,6 +67,7 @@ export function Sidebar() {
   const [isModelsOpen, setIsModelsOpen] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const location = useLocation()
+  const { user, signOut } = useAuth()
 
   // Use TanStack Query hook
   const { data: models = [], isLoading } = useModels()
@@ -158,6 +161,29 @@ export function Sidebar() {
           </div>
         </div>
       </nav>
+
+      {/* User section at bottom */}
+      <div className="p-4 border-t">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <User className="w-4 h-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{user?.email}</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={signOut}
+            className="flex-shrink-0"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
     </aside>
   )
 }
