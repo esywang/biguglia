@@ -74,28 +74,17 @@ CREATE POLICY "Owners can update their organizations"
     );
 
 -- RLS Policies for organization_members table
-CREATE POLICY "Users can view members of their organizations"
+-- Users can only view their own membership records (avoids recursion)
+CREATE POLICY "Users can view their own memberships"
     ON public.organization_members
     FOR SELECT
-    USING (
-        organization_id IN (
-            SELECT organization_id
-            FROM public.organization_members
-            WHERE user_id = auth.uid()
-        )
-    );
+    USING (user_id = auth.uid());
 
--- Only owners and admins can manage members
-CREATE POLICY "Owners and admins can manage members"
+-- Service role can manage all members (application layer handles authorization)
+CREATE POLICY "Service role can manage members"
     ON public.organization_members
     FOR ALL
-    USING (
-        organization_id IN (
-            SELECT organization_id
-            FROM public.organization_members
-            WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
-        )
-    );
+    USING (auth.jwt()->>'role' = 'service_role');
 
 -- RLS Policies for github_connections table
 CREATE POLICY "Users can view their org's GitHub connections"

@@ -1,7 +1,3 @@
-
-\restrict hDeeei4f9ew9QyUKpBaeIiDqiUjbYkUVsMUQiRfT82vDpPfPa2yP20WblYP8QAP
-
-
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -388,10 +384,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-
-
-
-
-\unrestrict hDeeei4f9ew9QyUKpBaeIiDqiUjbYkUVsMUQiRfT82vDpPfPa2yP20WblYP8QAP
 
 RESET ALL;
