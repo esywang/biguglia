@@ -38,3 +38,6 @@ coverage.xml
 # Deployment settings
 *.publishsettings
 .python_packages
+
+__blobstorage__
+__azurite*
